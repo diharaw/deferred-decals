@@ -16,8 +16,8 @@
 #include <rtcore_device.h>
 #include <rtcore_scene.h>
 
-#define CAMERA_FAR_PLANE 1000.0f
-#define PROJECTOR_BACK_OFF_DISTANCE 10.0f;
+#define CAMERA_FAR_PLANE 10000.0f
+#define PROJECTOR_BACK_OFF_DISTANCE 10.0f
 #define ALBEDO_TEXTURE_SIZE 4096
 #define DEPTH_TEXTURE_SIZE 512
 
@@ -29,6 +29,24 @@ struct GlobalUniforms
     glm::mat4 light_view_proj;
     DW_ALIGNED(16)
     glm::vec4 cam_pos;
+};
+
+struct DecalInstance
+{
+    // Last hit
+    glm::vec3 m_hit_pos;
+    glm::vec3 m_hit_normal;
+    float     m_hit_distance = INFINITY;
+
+    // Projector
+    glm::vec3 m_projector_pos;
+    glm::vec3 m_projector_dir;
+    glm::mat4 m_projector_view;
+    glm::mat4 m_projector_view_proj;
+    glm::mat4 m_projector_proj;
+
+    // Debug
+    int32_t m_selected_decal = 0;
 };
 
 class DeferredDecals : public dw::Application
@@ -59,7 +77,7 @@ protected:
         create_camera();
 
         m_transform = glm::mat4(1.0f);
-        m_transform = glm::scale(m_transform, glm::vec3(0.1f));
+        m_transform = glm::scale(m_transform, glm::vec3(1.0f));
 
         return true;
     }
@@ -71,12 +89,27 @@ protected:
         // Update camera.
         update_camera();
 
+        hit_scene();
+
         update_global_uniforms(m_global_uniforms);
 
         if (m_debug_gui)
             ui();
 
         render_lit_scene();
+
+        if (m_debug_gui)
+        {
+            m_debug_draw.sphere(2.0f, m_hit_pos, glm::vec3(1.0f, 0.0f, 0.0f));
+
+            if (m_is_hit)
+                m_debug_draw.frustum(m_projector_view_proj, glm::vec3(1.0f, 0.0f, 0.0f));
+			
+			for (int i = 0; i < m_decal_instances.size(); i++)
+				m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
+
+			m_debug_draw.render(nullptr, m_width, m_height, m_global_uniforms.view_proj);
+        }
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -141,9 +174,20 @@ protected:
 
     void mouse_pressed(int code) override
     {
-        if (code == GLFW_MOUSE_BUTTON_LEFT)
+        if (code == GLFW_MOUSE_BUTTON_LEFT && m_is_hit && m_debug_gui)
         {
-            
+            DecalInstance instance;
+
+            instance.m_hit_pos        = m_hit_pos;
+            instance.m_hit_normal     = m_hit_normal;
+            instance.m_hit_distance   = m_hit_distance;
+            instance.m_projector_pos  = m_projector_pos;
+            instance.m_projector_dir  = m_projector_dir;
+            instance.m_projector_view = m_projector_view;
+            instance.m_projector_proj = m_projector_proj;
+            instance.m_projector_view_proj = m_projector_view_proj;
+
+            m_decal_instances.push_back(instance);
         }
 
         // Enable mouse look.
@@ -183,6 +227,68 @@ protected:
     // -----------------------------------------------------------------------------------------------------------------------------------
 
 private:
+    // -----------------------------------------------------------------------------------------------------------------------------------
+
+    void hit_scene()
+    {
+        if (!m_debug_gui)
+            return;
+
+        double xpos, ypos;
+        glfwGetCursorPos(m_window, &xpos, &ypos);
+
+        glm::vec4 ndc_pos      = glm::vec4((2.0f * float(xpos)) / float(m_width) - 1.0f, 1.0 - (2.0f * float(ypos)) / float(m_height), -1.0f, 1.0f);
+        glm::vec4 view_coords  = glm::inverse(m_main_camera->m_projection) * ndc_pos;
+        glm::vec4 world_coords = glm::inverse(m_main_camera->m_view) * glm::vec4(view_coords.x, view_coords.y, -1.0f, 0.0f);
+
+        glm::vec3 ray_dir = glm::normalize(glm::vec3(world_coords));
+
+        RTCRayHit rayhit;
+
+        rayhit.ray.dir_x = ray_dir.x;
+        rayhit.ray.dir_y = ray_dir.y;
+        rayhit.ray.dir_z = ray_dir.z;
+
+        rayhit.ray.org_x = m_main_camera->m_position.x;
+        rayhit.ray.org_y = m_main_camera->m_position.y;
+        rayhit.ray.org_z = m_main_camera->m_position.z;
+
+        rayhit.ray.tnear     = 0;
+        rayhit.ray.tfar      = INFINITY;
+        rayhit.ray.mask      = 0;
+        rayhit.ray.flags     = 0;
+        rayhit.hit.geomID    = RTC_INVALID_GEOMETRY_ID;
+        rayhit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
+
+        rtcIntersect1(m_embree_scene, &m_embree_intersect_context, &rayhit);
+
+        if (rayhit.ray.tfar != INFINITY)
+        {
+            m_hit_pos      = m_main_camera->m_position + ray_dir * rayhit.ray.tfar;
+            m_hit_normal   = glm::normalize(glm::vec3(rayhit.hit.Ng_x, rayhit.hit.Ng_y, rayhit.hit.Ng_z));
+            m_hit_distance = rayhit.ray.tfar;
+
+            m_projector_pos = m_hit_pos + m_hit_normal * PROJECTOR_BACK_OFF_DISTANCE;
+            m_projector_dir = -m_hit_normal;
+
+            glm::mat4 rotate = glm::mat4(1.0f);
+
+            rotate = glm::rotate(rotate, glm::radians(m_projector_rotation), m_projector_dir);
+
+            glm::vec4 rotated_axis = rotate * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+
+            float ratio                = 1.0f; //float(m_decal_textures[m_selected_decal]->height()) / float(m_decal_textures[m_selected_decal]->width());
+            float proportionate_height = m_projector_size * ratio;
+
+            m_projector_view      = glm::lookAt(m_projector_pos, m_hit_pos, glm::normalize(glm::vec3(rotated_axis) + glm::vec3(0.001f, 0.0f, 0.0f)));
+            m_projector_proj = glm::ortho(-m_projector_size, m_projector_size, -proportionate_height, proportionate_height, 0.1f, PROJECTOR_BACK_OFF_DISTANCE + 10.0f);
+            m_projector_view_proj = m_projector_proj * m_projector_view;
+
+            m_is_hit = true;
+        }
+        else
+            m_is_hit = false;
+    }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
 
@@ -197,9 +303,9 @@ private:
     {
         {
             // Create general shaders
-            m_mesh_vs          = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/mesh_vs.glsl"));
-            m_mesh_fs          = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/mesh_fs.glsl"));
-            
+            m_mesh_vs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/mesh_vs.glsl"));
+            m_mesh_fs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/mesh_fs.glsl"));
+
             {
                 if (!m_mesh_vs || !m_mesh_fs)
                 {
@@ -422,21 +528,6 @@ private:
         // Update camera matrices.
         m_global_uniforms.view_proj = camera->m_projection * camera->m_view;
         m_global_uniforms.cam_pos   = glm::vec4(camera->m_position, 0.0f);
-
-        glm::mat4 rotate = glm::mat4(1.0f);
-
-        rotate = glm::rotate(rotate, glm::radians(m_projector_rotation), m_projector_dir);
-
-        glm::vec4 rotated_axis = rotate * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-
-        float ratio                = float(m_decal_textures[m_selected_decal]->height()) / float(m_decal_textures[m_selected_decal]->width());
-        float proportionate_height = m_projector_size * ratio;
-
-        m_projector_view = glm::lookAt(m_projector_pos, m_hit_pos, glm::vec3(rotated_axis));
-        m_projector_proj = glm::ortho(-m_projector_size, m_projector_size, -proportionate_height, proportionate_height, 0.1f, CAMERA_FAR_PLANE);
-
-        if (m_hit_distance != INFINITY)
-            m_global_uniforms.light_view_proj = m_projector_proj * m_projector_view;
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -499,7 +590,7 @@ private:
     float m_heading_speed      = 0.0f;
     float m_sideways_speed     = 0.0f;
     float m_camera_sensitivity = 0.05f;
-    float m_camera_speed       = 0.02f;
+    float m_camera_speed       = 0.2f;
     bool  m_debug_gui          = true;
 
     // Embree structure
@@ -518,15 +609,20 @@ private:
     glm::vec3 m_projector_dir;
     glm::mat4 m_projector_view;
     glm::mat4 m_projector_proj;
-    float     m_projector_size     = 10.0f;
-    float     m_projector_rotation = 0.0f;
+    glm::mat4 m_projector_view_proj;
+
+    float m_projector_size     = 10.0f;
+    float m_projector_rotation = 0.0f;
 
     // Debug
     int32_t m_selected_decal = 0;
 
+    std::vector<DecalInstance> m_decal_instances;
+
     // Camera orientation.
     float m_camera_x;
     float m_camera_y;
+    bool  m_is_hit = false;
 };
 
 DW_DECLARE_MAIN(DeferredDecals)
