@@ -1,8 +1,6 @@
-# Texture Space Decals
+# Deferred Decals
 
-An OpenGL sample application demonstrating a method for baking decals to textures. Suitable for character customisation and other scenarios that require persistent decals. 
-
-![TextureSpaceDecals](data/screenshot.jpg)
+An OpenGL implementation of Screen Space Deferred Decals. 
 
 ## Dependencies
 * [dwSampleFramework](https://github.com/diharaw/dwSampleFramework) 
