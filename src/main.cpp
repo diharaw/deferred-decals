@@ -100,15 +100,16 @@ protected:
 
         if (m_debug_gui)
         {
-            m_debug_draw.sphere(2.0f, m_hit_pos, glm::vec3(1.0f, 0.0f, 0.0f));
-
             if (m_is_hit)
                 m_debug_draw.frustum(m_projector_view_proj, glm::vec3(1.0f, 0.0f, 0.0f));
-			
-			for (int i = 0; i < m_decal_instances.size(); i++)
-				m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
 
-			m_debug_draw.render(nullptr, m_width, m_height, m_global_uniforms.view_proj);
+			if (m_visualize_projectors)
+			{
+				for (int i = 0; i < m_decal_instances.size(); i++)
+					m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
+			}
+           
+            m_debug_draw.render(nullptr, m_width, m_height, m_global_uniforms.view_proj);
         }
     }
 
@@ -174,24 +175,24 @@ protected:
 
     void mouse_pressed(int code) override
     {
-        if (code == GLFW_MOUSE_BUTTON_LEFT && m_is_hit && m_debug_gui)
+        if (code == GLFW_MOUSE_BUTTON_RIGHT && m_is_hit && m_debug_gui)
         {
             DecalInstance instance;
 
-            instance.m_hit_pos        = m_hit_pos;
-            instance.m_hit_normal     = m_hit_normal;
-            instance.m_hit_distance   = m_hit_distance;
-            instance.m_projector_pos  = m_projector_pos;
-            instance.m_projector_dir  = m_projector_dir;
-            instance.m_projector_view = m_projector_view;
-            instance.m_projector_proj = m_projector_proj;
+            instance.m_hit_pos             = m_hit_pos;
+            instance.m_hit_normal          = m_hit_normal;
+            instance.m_hit_distance        = m_hit_distance;
+            instance.m_projector_pos       = m_projector_pos;
+            instance.m_projector_dir       = m_projector_dir;
+            instance.m_projector_view      = m_projector_view;
+            instance.m_projector_proj      = m_projector_proj;
             instance.m_projector_view_proj = m_projector_view_proj;
 
             m_decal_instances.push_back(instance);
         }
 
         // Enable mouse look.
-        if (code == GLFW_MOUSE_BUTTON_RIGHT)
+        if (code == GLFW_MOUSE_BUTTON_LEFT)
             m_mouse_look = true;
     }
 
@@ -200,7 +201,7 @@ protected:
     void mouse_released(int code) override
     {
         // Disable mouse look.
-        if (code == GLFW_MOUSE_BUTTON_RIGHT)
+        if (code == GLFW_MOUSE_BUTTON_LEFT)
             m_mouse_look = false;
     }
 
@@ -268,7 +269,7 @@ private:
             m_hit_normal   = glm::normalize(glm::vec3(rayhit.hit.Ng_x, rayhit.hit.Ng_y, rayhit.hit.Ng_z));
             m_hit_distance = rayhit.ray.tfar;
 
-            m_projector_pos = m_hit_pos + m_hit_normal * PROJECTOR_BACK_OFF_DISTANCE;
+            m_projector_pos = m_hit_pos + m_hit_normal * m_projector_outer_depth;
             m_projector_dir = -m_hit_normal;
 
             glm::mat4 rotate = glm::mat4(1.0f);
@@ -281,7 +282,7 @@ private:
             float proportionate_height = m_projector_size * ratio;
 
             m_projector_view      = glm::lookAt(m_projector_pos, m_hit_pos, glm::normalize(glm::vec3(rotated_axis) + glm::vec3(0.001f, 0.0f, 0.0f)));
-            m_projector_proj = glm::ortho(-m_projector_size, m_projector_size, -proportionate_height, proportionate_height, 0.1f, PROJECTOR_BACK_OFF_DISTANCE + 10.0f);
+            m_projector_proj      = glm::ortho(-m_projector_size, m_projector_size, -proportionate_height, proportionate_height, 0.1f, m_projector_outer_depth + m_projector_inner_depth);
             m_projector_view_proj = m_projector_proj * m_projector_view;
 
             m_is_hit = true;
@@ -345,7 +346,10 @@ private:
     void ui()
     {
         ImGui::DragFloat("Decal Rotation", &m_projector_rotation, 1.0f, -180.0f, 180.0f);
-        ImGui::DragFloat("Decal Size", &m_projector_size, 1.0f, 0.1f, 20.0f);
+        ImGui::DragFloat("Decal Size", &m_projector_size, 5.0f, 10.0f, 200.0f);
+        ImGui::DragFloat("Decal Extents Outer", &m_projector_outer_depth, 1.0f, 2.0f, 50.0f);
+        ImGui::DragFloat("Decal Extents Inner", &m_projector_inner_depth, 1.0f, 2.0f, 50.0f);
+        ImGui::Checkbox("Visualize Projectors", &m_visualize_projectors);
 
         const char* listbox_items[] = { "OpenGL", "Vulkan", "DirectX", "Metal" };
         ImGui::ListBox("Selected Decal", &m_selected_decal, listbox_items, IM_ARRAYSIZE(listbox_items), 4);
@@ -611,8 +615,10 @@ private:
     glm::mat4 m_projector_proj;
     glm::mat4 m_projector_view_proj;
 
-    float m_projector_size     = 10.0f;
-    float m_projector_rotation = 0.0f;
+    float m_projector_size        = 10.0f;
+    float m_projector_rotation    = 0.0f;
+    float m_projector_outer_depth = 10.0f;
+    float m_projector_inner_depth = 10.0f;
 
     // Debug
     int32_t m_selected_decal = 0;
@@ -622,7 +628,8 @@ private:
     // Camera orientation.
     float m_camera_x;
     float m_camera_y;
-    bool  m_is_hit = false;
+    bool  m_is_hit               = false;
+    bool  m_visualize_projectors = false;
 };
 
 DW_DECLARE_MAIN(DeferredDecals)
