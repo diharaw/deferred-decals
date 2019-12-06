@@ -73,6 +73,9 @@ protected:
         if (!initialize_embree())
             return false;
 
+        create_textures();
+        create_framebuffers();
+
         // Create camera.
         create_camera();
 
@@ -96,19 +99,21 @@ protected:
         if (m_debug_gui)
             ui();
 
-        render_lit_scene();
+        render_g_buffer();
+        render_decals();
+        render_deferred_shading();
 
         if (m_debug_gui)
         {
             if (m_is_hit)
                 m_debug_draw.frustum(m_projector_view_proj, glm::vec3(1.0f, 0.0f, 0.0f));
 
-			if (m_visualize_projectors)
-			{
-				for (int i = 0; i < m_decal_instances.size(); i++)
-					m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
-			}
-           
+            if (m_visualize_projectors)
+            {
+                for (int i = 0; i < m_decal_instances.size(); i++)
+                    m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
+            }
+
             m_debug_draw.render(nullptr, m_width, m_height, m_global_uniforms.view_proj);
         }
     }
@@ -291,12 +296,25 @@ private:
             m_is_hit = false;
     }
 
-    // -----------------------------------------------------------------------------------------------------------------------------------
-
-    void render_lit_scene()
+	// -----------------------------------------------------------------------------------------------------------------------------------
+    
+	void render_g_buffer()
     {
-        render_scene(nullptr, m_mesh_program, 0, 0, m_width, m_height, GL_BACK);
+		render_scene(m_g_buffer_fbo.get(), m_g_buffer_program, 0, 0, m_width, m_height, GL_BACK);
     }
+
+	// -----------------------------------------------------------------------------------------------------------------------------------
+
+    void render_decals()
+    {
+    }
+
+	// -----------------------------------------------------------------------------------------------------------------------------------
+
+    void render_deferred_shading()
+    {
+        
+	}
 
     // -----------------------------------------------------------------------------------------------------------------------------------
 
@@ -304,31 +322,113 @@ private:
     {
         {
             // Create general shaders
-            m_mesh_vs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/mesh_vs.glsl"));
-            m_mesh_fs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/mesh_fs.glsl"));
+            m_g_buffer_vs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/mesh_vs.glsl"));
+            m_g_buffer_fs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/mesh_fs.glsl"));
 
             {
-                if (!m_mesh_vs || !m_mesh_fs)
+                if (!m_g_buffer_vs || !m_g_buffer_fs)
                 {
                     DW_LOG_FATAL("Failed to create Shaders");
                     return false;
                 }
 
                 // Create general shader program
-                dw::Shader* shaders[] = { m_mesh_vs.get(), m_mesh_fs.get() };
-                m_mesh_program        = std::make_unique<dw::Program>(2, shaders);
+                dw::Shader* shaders[] = { m_g_buffer_vs.get(), m_g_buffer_fs.get() };
+                m_g_buffer_program        = std::make_unique<dw::Program>(2, shaders);
 
-                if (!m_mesh_program)
+                if (!m_g_buffer_program)
                 {
                     DW_LOG_FATAL("Failed to create Shader Program");
                     return false;
                 }
 
-                m_mesh_program->uniform_block_binding("GlobalUniforms", 0);
+                m_g_buffer_program->uniform_block_binding("GlobalUniforms", 0);
+            }
+        }
+
+		{
+            // Create general shaders
+            m_decals_vs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/mesh_vs.glsl"));
+            m_decals_fs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/mesh_fs.glsl"));
+
+            {
+                if (!m_decals_vs || !m_decals_fs)
+                {
+                    DW_LOG_FATAL("Failed to create Shaders");
+                    return false;
+                }
+
+                // Create general shader program
+                dw::Shader* shaders[] = { m_decals_vs.get(), m_decals_fs.get() };
+                m_decals_program    = std::make_unique<dw::Program>(2, shaders);
+
+                if (!m_decals_program)
+                {
+                    DW_LOG_FATAL("Failed to create Shader Program");
+                    return false;
+                }
+
+                m_decals_program->uniform_block_binding("GlobalUniforms", 0);
+            }
+        }
+
+		{
+            // Create general shaders
+            m_fullscreen_triangle_vs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/mesh_vs.glsl"));
+            m_fullscreen_triangle_fs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/mesh_fs.glsl"));
+
+            {
+                if (!m_fullscreen_triangle_vs || !m_fullscreen_triangle_fs)
+                {
+                    DW_LOG_FATAL("Failed to create Shaders");
+                    return false;
+                }
+
+                // Create general shader program
+                dw::Shader* shaders[] = { m_fullscreen_triangle_vs.get(), m_fullscreen_triangle_fs.get() };
+                m_fullscreen_triangle_program      = std::make_unique<dw::Program>(2, shaders);
+
+                if (!m_fullscreen_triangle_program)
+                {
+                    DW_LOG_FATAL("Failed to create Shader Program");
+                    return false;
+                }
+
+                m_fullscreen_triangle_program->uniform_block_binding("GlobalUniforms", 0);
             }
         }
 
         return true;
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------------
+
+    void create_textures()
+    {
+        m_color_rt      = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
+        m_g_buffer_0_rt = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
+        m_g_buffer_1_rt = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB32F, GL_RGB, GL_FLOAT);
+        m_depth_rt      = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT);
+
+        m_g_buffer_0_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+        m_g_buffer_1_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+        m_depth_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------------
+
+    void create_framebuffers()
+    {
+        m_g_buffer_fbo = std::make_unique<dw::Framebuffer>();
+
+        dw::Texture* gbuffer_rts[] = { m_g_buffer_0_rt.get(), m_g_buffer_1_rt.get() };
+        m_g_buffer_fbo->attach_multiple_render_targets(2, gbuffer_rts);
+        m_g_buffer_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
+
+        m_color_fbo = std::make_unique<dw::Framebuffer>();
+
+        m_color_fbo->attach_render_target(0, m_color_rt.get(), 0, 0);
+        m_g_buffer_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -571,10 +671,24 @@ private:
 
 private:
     // General GPU resources.
-    std::unique_ptr<dw::Shader> m_mesh_vs;
-    std::unique_ptr<dw::Shader> m_mesh_fs;
+    std::unique_ptr<dw::Shader> m_g_buffer_vs;
+    std::unique_ptr<dw::Shader> m_g_buffer_fs;
+    std::unique_ptr<dw::Shader> m_decals_vs;
+    std::unique_ptr<dw::Shader> m_decals_fs;
+    std::unique_ptr<dw::Shader> m_fullscreen_triangle_vs;
+    std::unique_ptr<dw::Shader> m_fullscreen_triangle_fs;
 
-    std::unique_ptr<dw::Program> m_mesh_program;
+	std::unique_ptr<dw::Program> m_g_buffer_program;
+    std::unique_ptr<dw::Program> m_decals_program;
+	std::unique_ptr<dw::Program> m_fullscreen_triangle_program;
+
+    std::unique_ptr<dw::Texture2D> m_g_buffer_0_rt;
+    std::unique_ptr<dw::Texture2D> m_g_buffer_1_rt;
+    std::unique_ptr<dw::Texture2D> m_color_rt;
+    std::unique_ptr<dw::Texture2D> m_depth_rt;
+
+    std::unique_ptr<dw::Framebuffer> m_g_buffer_fbo;
+    std::unique_ptr<dw::Framebuffer> m_color_fbo;
 
     std::vector<std::unique_ptr<dw::Texture2D>> m_decal_textures;
 
