@@ -44,6 +44,7 @@ struct DecalInstance
     glm::mat4 m_projector_view;
     glm::mat4 m_projector_view_proj;
     glm::mat4 m_projector_proj;
+    glm::vec4 m_decal_overlay_color;
 
     // Debug
     int32_t m_selected_decal = 0;
@@ -194,6 +195,7 @@ protected:
             instance.m_projector_proj      = m_projector_proj;
             instance.m_projector_view_proj = m_projector_view_proj;
             instance.m_selected_decal      = m_selected_decal;
+            instance.m_decal_overlay_color = m_decal_overlay_color;
 
             m_decal_instances.push_back(instance);
         }
@@ -286,9 +288,9 @@ private:
 			glm::vec3 default_up   = glm::vec3(0.0f, 0.0f, 1.0f);
 
 			if (m_hit_normal.x > m_hit_normal.y && m_hit_normal.x > m_hit_normal.z)
-				default_up = glm::vec3(0.0f, 1.0f, 0.0f);
+				default_up = glm::vec3(0.0f, -1.0f, 0.0f);
             else if (m_hit_normal.z > m_hit_normal.y && m_hit_normal.z > m_hit_normal.x)
-                default_up = glm::vec3(0.0f, 1.0f, 0.0f);
+                default_up = glm::vec3(0.0f, -1.0f, 0.0f);
 
             glm::vec4 rotated_axis = rotate * glm::vec4(default_up, 0.0f);
 
@@ -336,6 +338,7 @@ private:
         {
             m_decals_program->set_uniform("u_InvDecalVP", glm::inverse(m_decal_instances[i].m_projector_view_proj));
             m_decals_program->set_uniform("u_DecalVP", m_decal_instances[i].m_projector_view_proj);
+            m_decals_program->set_uniform("u_DecalOverlayColor", m_decal_instances[i].m_decal_overlay_color);
 
 			if (m_decals_program->set_uniform("s_Decal", 0))
                 m_decal_textures[m_decal_instances[i].m_selected_decal]->bind(0);
@@ -600,6 +603,7 @@ private:
         ImGui::DragFloat("Decal Extents Outer", &m_projector_outer_depth, 1.0f, 2.0f, 50.0f);
         ImGui::DragFloat("Decal Extents Inner", &m_projector_inner_depth, 1.0f, 2.0f, 50.0f);
         ImGui::Checkbox("Visualize Projectors", &m_visualize_projectors);
+        ImGui::ColorEdit4("Decal Overlay Color", &m_decal_overlay_color.x);
 
         const char* listbox_items[] = { "OpenGL", "Vulkan", "DirectX", "Metal" };
         ImGui::ListBox("Selected Decal", &m_selected_decal, listbox_items, IM_ARRAYSIZE(listbox_items), 4);
@@ -889,10 +893,11 @@ private:
     glm::mat4 m_projector_proj;
     glm::mat4 m_projector_view_proj;
 
-    float m_projector_size        = 10.0f;
+    float m_projector_size        = 80.0f;
     float m_projector_rotation    = 0.0f;
-    float m_projector_outer_depth = 10.0f;
-    float m_projector_inner_depth = 10.0f;
+    float m_projector_outer_depth = 30.0f;
+    float m_projector_inner_depth = 30.0f;
+    glm::vec4 m_decal_overlay_color   = glm::vec4(1.0f);
 
     // Debug
     int32_t m_selected_decal = 0;

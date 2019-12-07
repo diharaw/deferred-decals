@@ -24,6 +24,7 @@ layout(std140) uniform GlobalUniforms
 uniform sampler2D s_Depth;
 uniform sampler2D s_Decal;
 
+uniform vec4 u_DecalOverlayColor;
 uniform mat4 u_DecalVP;
 
 // ------------------------------------------------------------------
@@ -68,7 +69,7 @@ void main()
     vec2 decal_tex_coord = ndc_pos.xy * 0.5 + 0.5;
     decal_tex_coord.x = 1.0 - decal_tex_coord.x;
 
-    vec4 albedo = texture(s_Decal, decal_tex_coord);
+    vec4 albedo = texture(s_Decal, decal_tex_coord) * u_DecalOverlayColor;
 
     if (albedo.a < 0.1)
         discard;
