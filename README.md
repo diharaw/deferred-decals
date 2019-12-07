@@ -2,6 +2,11 @@
 
 An OpenGL implementation of Screen Space Deferred Decals. 
 
+## Screenshots
+
+![DeferredDecals](data/screenshot_1.jpg)
+![DeferredDecals](data/screenshot_2.jpg)
+
 ## Dependencies
 * [dwSampleFramework](https://github.com/diharaw/dwSampleFramework) 
 * [embree](https://https://github.com/embree/embree) 
