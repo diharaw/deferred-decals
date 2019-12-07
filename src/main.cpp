@@ -193,6 +193,7 @@ protected:
             instance.m_projector_view      = m_projector_view;
             instance.m_projector_proj      = m_projector_proj;
             instance.m_projector_view_proj = m_projector_view_proj;
+            instance.m_selected_decal      = m_selected_decal;
 
             m_decal_instances.push_back(instance);
         }
@@ -282,9 +283,16 @@ private:
 
             rotate = glm::rotate(rotate, glm::radians(m_projector_rotation), m_projector_dir);
 
-            glm::vec4 rotated_axis = rotate * glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+			glm::vec3 default_up   = glm::vec3(0.0f, 0.0f, 1.0f);
 
-            float ratio                = 1.0f; //float(m_decal_textures[m_selected_decal]->height()) / float(m_decal_textures[m_selected_decal]->width());
+			if (m_hit_normal.x > m_hit_normal.y && m_hit_normal.x > m_hit_normal.z)
+				default_up = glm::vec3(0.0f, 1.0f, 0.0f);
+            else if (m_hit_normal.z > m_hit_normal.y && m_hit_normal.z > m_hit_normal.x)
+                default_up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+            glm::vec4 rotated_axis = rotate * glm::vec4(default_up, 0.0f);
+
+            float ratio                = float(m_decal_textures[m_selected_decal]->height()) / float(m_decal_textures[m_selected_decal]->width());
             float proportionate_height = m_projector_size * ratio;
 
             m_projector_view      = glm::lookAt(m_projector_pos, m_hit_pos, glm::normalize(glm::vec3(rotated_axis) + glm::vec3(0.001f, 0.0f, 0.0f)));
@@ -330,7 +338,7 @@ private:
             m_decals_program->set_uniform("u_DecalVP", m_decal_instances[i].m_projector_view_proj);
 
 			if (m_decals_program->set_uniform("s_Decal", 0))
-                m_decal_textures[1]->bind(0);
+                m_decal_textures[m_decal_instances[i].m_selected_decal]->bind(0);
 
 			if (m_decals_program->set_uniform("s_Depth", 1))
 				m_depth_rt->bind(1);

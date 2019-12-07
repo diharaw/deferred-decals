@@ -8,7 +8,7 @@ layout(location = 0) in vec3 VS_IN_Position;
 // OUTPUT VARIABLES  ------------------------------------------------
 // ------------------------------------------------------------------
 
-out vec2 FS_IN_TexCoord;
+out vec4 FS_IN_ClipPos;
 
 // ------------------------------------------------------------------
 // UNIFORMS ---------------------------------------------------------
@@ -31,7 +31,7 @@ void main()
 {
     vec4 world_pos = u_InvDecalVP * vec4(VS_IN_Position, 1.0f);
     gl_Position = view_proj * world_pos;
-    FS_IN_TexCoord = (gl_Position.xy/gl_Position.w) * 0.5 + 0.5;
+    FS_IN_ClipPos = gl_Position;
 }
 
 // ------------------------------------------------------------------

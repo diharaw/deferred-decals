@@ -8,7 +8,7 @@ out vec3 FS_OUT_Color;
 // INPUT VARIABLES  ------------------------------------------------
 // ------------------------------------------------------------------
 
-in vec2 FS_IN_TexCoord;
+in vec4 FS_IN_ClipPos;
 
 // ------------------------------------------------------------------
 // UNIFORMS ---------------------------------------------------------
@@ -30,13 +30,10 @@ uniform mat4 u_DecalVP;
 // UNIFORM ----------------------------------------------------------
 // ------------------------------------------------------------------
 
-vec3 world_position_from_depth(vec2 tex_coords, float ndc_depth)
+vec3 world_position_from_depth(vec2 screen_pos, float ndc_depth)
 {
 	// Remap depth to [-1.0, 1.0] range. 
 	float depth = ndc_depth * 2.0 - 1.0;
-
-	// Take texture coordinate and remap to [-1.0, 1.0] range. 
-	vec2 screen_pos = tex_coords * 2.0 - 1.0;
 
 	// // Create NDC position.
 	vec4 ndc_pos = vec4(screen_pos, depth, 1.0);
@@ -56,8 +53,11 @@ vec3 world_position_from_depth(vec2 tex_coords, float ndc_depth)
 
 void main()
 {
-    float depth = texture(s_Depth, FS_IN_TexCoord).x;
-    vec3 world_pos = world_position_from_depth(FS_IN_TexCoord, depth);
+    vec2 screen_pos = FS_IN_ClipPos.xy / FS_IN_ClipPos.w;
+    vec2 tex_coords = screen_pos * 0.5 + 0.5;
+
+    float depth = texture(s_Depth, tex_coords).x;
+    vec3 world_pos = world_position_from_depth(screen_pos, depth);
 
     vec4 ndc_pos = u_DecalVP * vec4(world_pos, 1.0);
     ndc_pos.xyz /= ndc_pos.w;
@@ -66,6 +66,8 @@ void main()
         discard;
 
     vec2 decal_tex_coord = ndc_pos.xy * 0.5 + 0.5;
+    decal_tex_coord.x = 1.0 - decal_tex_coord.x;
+
     vec4 albedo = texture(s_Decal, decal_tex_coord);
 
     if (albedo.a < 0.1)
