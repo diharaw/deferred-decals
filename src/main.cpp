@@ -26,6 +26,8 @@ struct GlobalUniforms
     DW_ALIGNED(16)
     glm::mat4 view_proj;
     DW_ALIGNED(16)
+    glm::mat4 inv_view_proj;
+    DW_ALIGNED(16)
     glm::vec4 cam_pos;
 };
 
@@ -99,7 +101,7 @@ protected:
             ui();
 
         render_g_buffer();
-        //render_decals();
+        render_decals();
         render_deferred_shading();
 
         if (m_debug_gui)
@@ -311,7 +313,7 @@ private:
         glDepthMask(GL_FALSE);
         glDisable(GL_CULL_FACE);
 
-        m_g_buffer_fbo->bind();
+        m_decal_fbo->bind();
 
         glViewport(0, 0, m_width, m_height);
 
@@ -324,10 +326,19 @@ private:
 
         for (int i = 0; i < m_decal_instances.size(); i++)
         {
-            m_decals_program->set_uniform("u_InvVP", glm::inverse(m_decal_instances[i].m_projector_view_proj));
+            m_decals_program->set_uniform("u_InvDecalVP", glm::inverse(m_decal_instances[i].m_projector_view_proj));
+            m_decals_program->set_uniform("u_DecalVP", m_decal_instances[i].m_projector_view_proj);
 
-            glDrawElements(GL_TRIANGLES, 32, GL_UNSIGNED_SHORT, 0);
+			if (m_decals_program->set_uniform("s_Decal", 0))
+                m_decal_textures[1]->bind(0);
+
+			if (m_decals_program->set_uniform("s_Depth", 1))
+				m_depth_rt->bind(1);
+
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
         }
+
+		glDepthMask(GL_TRUE);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -477,31 +488,31 @@ private:
             }
         }
 
-        //{
-        //    // Create general shaders
-        //    m_decals_vs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/decals_vs.glsl"));
-        //    m_decals_fs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/decals_fs.glsl"));
+        {
+            // Create general shaders
+            m_decals_vs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_VERTEX_SHADER, "shader/decals_vs.glsl"));
+            m_decals_fs = std::unique_ptr<dw::Shader>(dw::Shader::create_from_file(GL_FRAGMENT_SHADER, "shader/decals_fs.glsl"));
 
-        //    {
-        //        if (!m_decals_vs || !m_decals_fs)
-        //        {
-        //            DW_LOG_FATAL("Failed to create Shaders");
-        //            return false;
-        //        }
+            {
+                if (!m_decals_vs || !m_decals_fs)
+                {
+                    DW_LOG_FATAL("Failed to create Shaders");
+                    return false;
+                }
 
-        //        // Create general shader program
-        //        dw::Shader* shaders[] = { m_decals_vs.get(), m_decals_fs.get() };
-        //        m_decals_program      = std::make_unique<dw::Program>(2, shaders);
+                // Create general shader program
+                dw::Shader* shaders[] = { m_decals_vs.get(), m_decals_fs.get() };
+                m_decals_program      = std::make_unique<dw::Program>(2, shaders);
 
-        //        if (!m_decals_program)
-        //        {
-        //            DW_LOG_FATAL("Failed to create Shader Program");
-        //            return false;
-        //        }
+                if (!m_decals_program)
+                {
+                    DW_LOG_FATAL("Failed to create Shader Program");
+                    return false;
+                }
 
-        //        m_decals_program->uniform_block_binding("GlobalUniforms", 0);
-        //    }
-        //}
+                m_decals_program->uniform_block_binding("GlobalUniforms", 0);
+            }
+        }
 
         {
             // Create general shaders
@@ -555,7 +566,11 @@ private:
         m_g_buffer_fbo->attach_multiple_render_targets(2, gbuffer_rts);
         m_g_buffer_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
 
-        m_g_buffer_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
+		m_decal_fbo = std::make_unique<dw::Framebuffer>();
+
+        dw::Texture* decals_rts[] = { m_g_buffer_0_rt.get() };
+        m_decal_fbo->attach_multiple_render_targets(1, decals_rts);
+        m_decal_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -608,19 +623,19 @@ private:
     bool load_decals()
     {
         m_decal_textures.resize(4);
-        m_decal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/opengl.png", true));
+        m_decal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/opengl.png", false, true));
         m_decal_textures[0]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[0]->set_mag_filter(GL_LINEAR);
 
-        m_decal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/vulkan.png", true));
+        m_decal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/vulkan.png", false, true));
         m_decal_textures[1]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[1]->set_mag_filter(GL_LINEAR);
 
-        m_decal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/directx.png", true));
+        m_decal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/directx.png", false, true));
         m_decal_textures[2]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[2]->set_mag_filter(GL_LINEAR);
 
-        m_decal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/metal.png", true));
+        m_decal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/metal.png", false, true));
         m_decal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[3]->set_mag_filter(GL_LINEAR);
 
@@ -764,6 +779,7 @@ private:
     {
         // Update camera matrices.
         m_global_uniforms.view_proj = camera->m_projection * camera->m_view;
+        m_global_uniforms.inv_view_proj = glm::inverse(m_global_uniforms.view_proj);
         m_global_uniforms.cam_pos   = glm::vec4(camera->m_position, 0.0f);
     }
 
@@ -820,6 +836,7 @@ private:
     std::unique_ptr<dw::Texture2D> m_depth_rt;
 
     std::unique_ptr<dw::Framebuffer> m_g_buffer_fbo;
+    std::unique_ptr<dw::Framebuffer> m_decal_fbo;
 
     std::vector<std::unique_ptr<dw::Texture2D>> m_decal_textures;
 

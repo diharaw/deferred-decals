@@ -17,6 +17,7 @@ out vec4 FS_OUT_Color;
 layout(std140) uniform GlobalUniforms
 {
     mat4 view_proj;
+    mat4 inv_view_proj;
     vec4 cam_pos;
 };
 

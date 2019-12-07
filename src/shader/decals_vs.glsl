@@ -3,17 +3,11 @@
 // ------------------------------------------------------------------
 
 layout(location = 0) in vec3 VS_IN_Position;
-layout(location = 1) in vec2 VS_IN_Texcoord;
-layout(location = 2) in vec3 VS_IN_Normal;
-layout(location = 3) in vec3 VS_IN_Tangent;
-layout(location = 4) in vec3 VS_IN_Bitangent;
 
 // ------------------------------------------------------------------
-// OUTPUT VARIABLES -------------------------------------------------
+// OUTPUT VARIABLES  ------------------------------------------------
 // ------------------------------------------------------------------
 
-out vec3 FS_IN_WorldPos;
-out vec3 FS_IN_Normal;
 out vec2 FS_IN_TexCoord;
 
 // ------------------------------------------------------------------
@@ -23,10 +17,11 @@ out vec2 FS_IN_TexCoord;
 layout(std140) uniform GlobalUniforms
 {
     mat4 view_proj;
+    mat4 inv_view_proj;
     vec4 cam_pos;
 };
 
-uniform mat4 u_Model;
+uniform mat4 u_InvDecalVP;
 
 // ------------------------------------------------------------------
 // MAIN -------------------------------------------------------------
@@ -34,12 +29,9 @@ uniform mat4 u_Model;
 
 void main()
 {
-    vec4 world_pos = u_Model * vec4(VS_IN_Position, 1.0f);
-    FS_IN_WorldPos = world_pos.xyz;
-    FS_IN_Normal   = normalize(normalize(mat3(u_Model) * VS_IN_Normal));
-    FS_IN_TexCoord = VS_IN_Texcoord;
-
+    vec4 world_pos = u_InvDecalVP * vec4(VS_IN_Position, 1.0f);
     gl_Position = view_proj * world_pos;
+    FS_IN_TexCoord = (gl_Position.xy/gl_Position.w) * 0.5 + 0.5;
 }
 
 // ------------------------------------------------------------------
