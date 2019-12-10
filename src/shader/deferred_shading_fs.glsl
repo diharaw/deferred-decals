@@ -39,8 +39,8 @@ void main(void)
 {
     vec3 dir = normalize(vec3(0.0, 1.0, 1.0));
 
-    vec3 albedo  = texture(s_Albedo, FS_IN_TexCoord).rgb;
-    vec3 normal  = texture(s_Normals, FS_IN_TexCoord).rgb;
+    vec3 albedo = texture(s_Albedo, FS_IN_TexCoord).rgb;
+    vec3 normal = texture(s_Normals, FS_IN_TexCoord).rgb;
 
     vec3 color = albedo * max(dot(normal, dir), 0.0) + albedo * kAmbient;
 

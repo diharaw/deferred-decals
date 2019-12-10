@@ -30,8 +30,8 @@ uniform mat4 u_InvDecalVP;
 void main()
 {
     vec4 world_pos = u_InvDecalVP * vec4(VS_IN_Position, 1.0f);
-    gl_Position = view_proj * world_pos;
-    FS_IN_ClipPos = gl_Position;
+    gl_Position    = view_proj * world_pos;
+    FS_IN_ClipPos  = gl_Position;
 }
 
 // ------------------------------------------------------------------

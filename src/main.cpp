@@ -285,10 +285,10 @@ private:
 
             rotate = glm::rotate(rotate, glm::radians(m_projector_rotation), m_projector_dir);
 
-			glm::vec3 default_up   = glm::vec3(0.0f, 0.0f, 1.0f);
+            glm::vec3 default_up = glm::vec3(0.0f, 0.0f, 1.0f);
 
-			if (m_hit_normal.x > m_hit_normal.y && m_hit_normal.x > m_hit_normal.z)
-				default_up = glm::vec3(0.0f, -1.0f, 0.0f);
+            if (m_hit_normal.x > m_hit_normal.y && m_hit_normal.x > m_hit_normal.z)
+                default_up = glm::vec3(0.0f, -1.0f, 0.0f);
             else if (m_hit_normal.z > m_hit_normal.y && m_hit_normal.z > m_hit_normal.x)
                 default_up = glm::vec3(0.0f, -1.0f, 0.0f);
 
@@ -340,16 +340,16 @@ private:
             m_decals_program->set_uniform("u_DecalVP", m_decal_instances[i].m_projector_view_proj);
             m_decals_program->set_uniform("u_DecalOverlayColor", m_decal_instances[i].m_decal_overlay_color);
 
-			if (m_decals_program->set_uniform("s_Decal", 0))
+            if (m_decals_program->set_uniform("s_Decal", 0))
                 m_decal_textures[m_decal_instances[i].m_selected_decal]->bind(0);
 
-			if (m_decals_program->set_uniform("s_Depth", 1))
-				m_depth_rt->bind(1);
+            if (m_decals_program->set_uniform("s_Depth", 1))
+                m_depth_rt->bind(1);
 
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
         }
 
-		glDepthMask(GL_TRUE);
+        glDepthMask(GL_TRUE);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -577,7 +577,7 @@ private:
         m_g_buffer_fbo->attach_multiple_render_targets(2, gbuffer_rts);
         m_g_buffer_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
 
-		m_decal_fbo = std::make_unique<dw::Framebuffer>();
+        m_decal_fbo = std::make_unique<dw::Framebuffer>();
 
         dw::Texture* decals_rts[] = { m_g_buffer_0_rt.get() };
         m_decal_fbo->attach_multiple_render_targets(1, decals_rts);
@@ -726,11 +726,11 @@ private:
         {
             dw::SubMesh& submesh = submeshes[i];
 
-			if (submesh.mat->texture(0))
-			{
-				if (program->set_uniform("s_Albedo", 0))
-					submesh.mat->texture(0)->bind(0);
-			}
+            if (submesh.mat->texture(0))
+            {
+                if (program->set_uniform("s_Albedo", 0))
+                    submesh.mat->texture(0)->bind(0);
+            }
 
             // Issue draw call.
             glDrawElementsBaseVertex(GL_TRIANGLES, submesh.index_count, GL_UNSIGNED_INT, (void*)(sizeof(unsigned int) * submesh.base_index), submesh.base_vertex);
@@ -790,9 +790,9 @@ private:
     void update_transforms(dw::Camera* camera)
     {
         // Update camera matrices.
-        m_global_uniforms.view_proj = camera->m_projection * camera->m_view;
+        m_global_uniforms.view_proj     = camera->m_projection * camera->m_view;
         m_global_uniforms.inv_view_proj = glm::inverse(m_global_uniforms.view_proj);
-        m_global_uniforms.cam_pos   = glm::vec4(camera->m_position, 0.0f);
+        m_global_uniforms.cam_pos       = glm::vec4(camera->m_position, 0.0f);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -893,10 +893,10 @@ private:
     glm::mat4 m_projector_proj;
     glm::mat4 m_projector_view_proj;
 
-    float m_projector_size        = 80.0f;
-    float m_projector_rotation    = 0.0f;
-    float m_projector_outer_depth = 30.0f;
-    float m_projector_inner_depth = 30.0f;
+    float     m_projector_size        = 80.0f;
+    float     m_projector_rotation    = 0.0f;
+    float     m_projector_outer_depth = 30.0f;
+    float     m_projector_inner_depth = 30.0f;
     glm::vec4 m_decal_overlay_color   = glm::vec4(1.0f);
 
     // Debug

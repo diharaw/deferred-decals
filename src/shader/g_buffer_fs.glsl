@@ -26,8 +26,8 @@ void main()
 {
     vec4 diffuse = texture(s_Albedo, FS_IN_TexCoord);
 
-    FS_OUT_Albedo   = diffuse.xyz;
-    FS_OUT_Normal   = FS_IN_Normal;
+    FS_OUT_Albedo = diffuse.xyz;
+    FS_OUT_Normal = FS_IN_Normal;
 }
 
 // ------------------------------------------------------------------
