@@ -13,6 +13,8 @@ layout(location = 4) in vec3 VS_IN_Bitangent;
 // ------------------------------------------------------------------
 
 out vec3 FS_IN_Normal;
+out vec3 FS_IN_Tangent;
+out vec3 FS_IN_Bitangent;
 out vec2 FS_IN_TexCoord;
 
 // ------------------------------------------------------------------
@@ -35,7 +37,13 @@ uniform mat4 u_Model;
 void main()
 {
     vec4 world_pos = u_Model * vec4(VS_IN_Position, 1.0f);
-    FS_IN_Normal   = normalize(normalize(mat3(u_Model) * VS_IN_Normal));
+
+    mat3 normal_mat = mat3(u_Model);
+
+    FS_IN_Normal  = normalize(normal_mat * VS_IN_Normal);
+    FS_IN_Tangent = normal_mat * VS_IN_Tangent;
+	FS_IN_Bitangent = normal_mat * VS_IN_Bitangent;
+
     FS_IN_TexCoord = VS_IN_Texcoord;
 
     gl_Position = view_proj * world_pos;

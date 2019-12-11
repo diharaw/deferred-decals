@@ -15,6 +15,7 @@
 #include <rtcore_ray.h>
 #include <rtcore_device.h>
 #include <rtcore_scene.h>
+#include <assimp/scene.h>
 
 #define CAMERA_FAR_PLANE 10000.0f
 #define PROJECTOR_BACK_OFF_DISTANCE 10.0f
@@ -726,10 +727,16 @@ private:
         {
             dw::SubMesh& submesh = submeshes[i];
 
-            if (submesh.mat->texture(0))
+            if (submesh.mat->texture(aiTextureType_DIFFUSE))
             {
                 if (program->set_uniform("s_Albedo", 0))
-                    submesh.mat->texture(0)->bind(0);
+                    submesh.mat->texture(aiTextureType_DIFFUSE)->bind(0);
+            }
+
+			if (submesh.mat->texture(aiTextureType_HEIGHT))
+            {
+                if (program->set_uniform("s_Normal", 1))
+                    submesh.mat->texture(aiTextureType_HEIGHT)->bind(1);
             }
 
             // Issue draw call.
