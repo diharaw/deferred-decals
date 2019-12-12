@@ -46,6 +46,7 @@ struct DecalInstance
     glm::mat4 m_projector_view_proj;
     glm::mat4 m_projector_proj;
     glm::vec4 m_decal_overlay_color;
+    glm::vec2 m_aspect_ratio;
 
     // Debug
     int32_t m_selected_decal = 0;
@@ -197,6 +198,7 @@ protected:
             instance.m_projector_view_proj = m_projector_view_proj;
             instance.m_selected_decal      = m_selected_decal;
             instance.m_decal_overlay_color = m_decal_overlay_color;
+            instance.m_aspect_ratio        = m_projector_aspect_ratio;
 
             m_decal_instances.push_back(instance);
         }
@@ -295,11 +297,19 @@ private:
 
             glm::vec4 rotated_axis = rotate * glm::vec4(default_up, 0.0f);
 
-            float ratio                = float(m_decal_textures[m_selected_decal]->height()) / float(m_decal_textures[m_selected_decal]->width());
-            float proportionate_height = m_projector_size * ratio;
+            if (m_decal_textures[m_selected_decal]->width() > m_decal_textures[m_selected_decal]->height())
+            {
+                m_projector_aspect_ratio.x = 1.0f;
+                m_projector_aspect_ratio.y = float(m_decal_textures[m_selected_decal]->width()) / float(m_decal_textures[m_selected_decal]->height());
+            }
+            else
+            {
+                m_projector_aspect_ratio.x = float(m_decal_textures[m_selected_decal]->height()) / float(m_decal_textures[m_selected_decal]->width());
+                m_projector_aspect_ratio.y = 1.0f;
+			}
 
             m_projector_view      = glm::lookAt(m_projector_pos, m_hit_pos, glm::normalize(glm::vec3(rotated_axis) + glm::vec3(0.001f, 0.0f, 0.0f)));
-            m_projector_proj      = glm::ortho(-m_projector_size, m_projector_size, -proportionate_height, proportionate_height, 0.1f, m_projector_outer_depth + m_projector_inner_depth);
+             m_projector_proj      = glm::ortho(-m_projector_size, m_projector_size, -m_projector_size, m_projector_size, 0.1f, m_projector_outer_depth + m_projector_inner_depth);
             m_projector_view_proj = m_projector_proj * m_projector_view;
 
             m_is_hit = true;
@@ -340,12 +350,16 @@ private:
             m_decals_program->set_uniform("u_InvDecalVP", glm::inverse(m_decal_instances[i].m_projector_view_proj));
             m_decals_program->set_uniform("u_DecalVP", m_decal_instances[i].m_projector_view_proj);
             m_decals_program->set_uniform("u_DecalOverlayColor", m_decal_instances[i].m_decal_overlay_color);
+            m_decals_program->set_uniform("u_AspectRatio", m_decal_instances[i].m_aspect_ratio);
 
             if (m_decals_program->set_uniform("s_Decal", 0))
                 m_decal_textures[m_decal_instances[i].m_selected_decal]->bind(0);
 
-            if (m_decals_program->set_uniform("s_Depth", 1))
-                m_depth_rt->bind(1);
+            if (m_decals_program->set_uniform("s_DecalNormal", 1))
+                m_decal_normal_textures[m_decal_instances[i].m_selected_decal]->bind(1);
+
+            if (m_decals_program->set_uniform("s_Depth", 2))
+                m_depth_rt->bind(2);
 
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
         }
@@ -652,6 +666,23 @@ private:
         m_decal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[3]->set_mag_filter(GL_LINEAR);
 
+        //m_decal_normal_textures.resize(4);
+        //      m_decal_normal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/opengl.png", false, true));
+        //      m_decal_normal_textures[0]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        //      m_decal_normal_textures[0]->set_mag_filter(GL_LINEAR);
+        //
+        //      m_decal_normal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/vulkan.png", false, true));
+        //      m_decal_normal_textures[1]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        //      m_decal_normal_textures[1]->set_mag_filter(GL_LINEAR);
+        //
+        //      m_decal_normal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/directx.png", false, true));
+        //      m_decal_normal_textures[2]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        //      m_decal_normal_textures[2]->set_mag_filter(GL_LINEAR);
+        //
+        //      m_decal_normal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/metal.png", false, true));
+        //      m_decal_normal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        //      m_decal_normal_textures[3]->set_mag_filter(GL_LINEAR);
+
         return true;
     }
 
@@ -733,7 +764,7 @@ private:
                     submesh.mat->texture(aiTextureType_DIFFUSE)->bind(0);
             }
 
-			if (submesh.mat->texture(aiTextureType_HEIGHT))
+            if (submesh.mat->texture(aiTextureType_HEIGHT))
             {
                 if (program->set_uniform("s_Normal", 1))
                     submesh.mat->texture(aiTextureType_HEIGHT)->bind(1);
@@ -858,6 +889,7 @@ private:
     std::unique_ptr<dw::Framebuffer> m_decal_fbo;
 
     std::vector<std::unique_ptr<dw::Texture2D>> m_decal_textures;
+    std::vector<std::unique_ptr<dw::Texture2D>> m_decal_normal_textures;
 
     std::unique_ptr<dw::UniformBuffer> m_global_ubo;
 
@@ -899,6 +931,7 @@ private:
     glm::mat4 m_projector_view;
     glm::mat4 m_projector_proj;
     glm::mat4 m_projector_view_proj;
+    glm::vec2 m_projector_aspect_ratio;
 
     float     m_projector_size        = 80.0f;
     float     m_projector_rotation    = 0.0f;

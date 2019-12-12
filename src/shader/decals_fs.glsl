@@ -26,6 +26,7 @@ uniform sampler2D s_Decal;
 
 uniform vec4 u_DecalOverlayColor;
 uniform mat4 u_DecalVP;
+uniform vec2 u_AspectRatio;
 
 // ------------------------------------------------------------------
 // UNIFORM ----------------------------------------------------------
@@ -62,6 +63,8 @@ void main()
 
     vec4 ndc_pos = u_DecalVP * vec4(world_pos, 1.0);
     ndc_pos.xyz /= ndc_pos.w;
+
+    ndc_pos.xy *= u_AspectRatio;
 
     if (ndc_pos.x < -1.0 || ndc_pos.x > 1.0 || ndc_pos.y < -1.0 || ndc_pos.y > 1.0)
         discard;
