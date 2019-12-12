@@ -306,10 +306,10 @@ private:
             {
                 m_projector_aspect_ratio.x = float(m_decal_textures[m_selected_decal]->height()) / float(m_decal_textures[m_selected_decal]->width());
                 m_projector_aspect_ratio.y = 1.0f;
-			}
+            }
 
             m_projector_view      = glm::lookAt(m_projector_pos, m_hit_pos, glm::normalize(glm::vec3(rotated_axis) + glm::vec3(0.001f, 0.0f, 0.0f)));
-             m_projector_proj      = glm::ortho(-m_projector_size, m_projector_size, -m_projector_size, m_projector_size, 0.1f, m_projector_outer_depth + m_projector_inner_depth);
+            m_projector_proj      = glm::ortho(-m_projector_size, m_projector_size, -m_projector_size, m_projector_size, 0.1f, m_projector_outer_depth + m_projector_inner_depth);
             m_projector_view_proj = m_projector_proj * m_projector_view;
 
             m_is_hit = true;

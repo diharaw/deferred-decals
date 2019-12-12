@@ -27,7 +27,7 @@ uniform sampler2D s_Normal;
 
 vec3 get_normal_from_map(vec3 tangent, vec3 bitangent, vec3 normal, vec2 tex_coord, sampler2D normal_map)
 {
-	// Create TBN matrix.
+    // Create TBN matrix.
     mat3 TBN = mat3(normalize(tangent), normalize(bitangent), normalize(normal));
 
     // Sample tangent space normal vector from normal map and remap it from [0, 1] to [-1, 1] range.

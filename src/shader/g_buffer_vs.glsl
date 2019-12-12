@@ -40,9 +40,9 @@ void main()
 
     mat3 normal_mat = mat3(u_Model);
 
-    FS_IN_Normal  = normalize(normal_mat * VS_IN_Normal);
-    FS_IN_Tangent = normal_mat * VS_IN_Tangent;
-	FS_IN_Bitangent = normal_mat * VS_IN_Bitangent;
+    FS_IN_Normal    = normalize(normal_mat * VS_IN_Normal);
+    FS_IN_Tangent   = normal_mat * VS_IN_Tangent;
+    FS_IN_Bitangent = normal_mat * VS_IN_Bitangent;
 
     FS_IN_TexCoord = VS_IN_Texcoord;
 
