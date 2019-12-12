@@ -334,7 +334,7 @@ private:
         glDepthMask(GL_FALSE);
         glDisable(GL_CULL_FACE);
 
-        m_decal_fbo->bind();
+        m_g_buffer_fbo->bind();
 
         glViewport(0, 0, m_width, m_height);
 
@@ -349,6 +349,7 @@ private:
         {
             m_decals_program->set_uniform("u_InvDecalVP", glm::inverse(m_decal_instances[i].m_projector_view_proj));
             m_decals_program->set_uniform("u_DecalVP", m_decal_instances[i].m_projector_view_proj);
+            m_decals_program->set_uniform("u_DecalModel", glm::inverse(m_decal_instances[i].m_projector_view));
             m_decals_program->set_uniform("u_DecalOverlayColor", m_decal_instances[i].m_decal_overlay_color);
             m_decals_program->set_uniform("u_AspectRatio", m_decal_instances[i].m_aspect_ratio);
 
@@ -591,12 +592,6 @@ private:
         dw::Texture* gbuffer_rts[] = { m_g_buffer_0_rt.get(), m_g_buffer_1_rt.get() };
         m_g_buffer_fbo->attach_multiple_render_targets(2, gbuffer_rts);
         m_g_buffer_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
-
-        m_decal_fbo = std::make_unique<dw::Framebuffer>();
-
-        dw::Texture* decals_rts[] = { m_g_buffer_0_rt.get() };
-        m_decal_fbo->attach_multiple_render_targets(1, decals_rts);
-        m_decal_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -666,22 +661,22 @@ private:
         m_decal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[3]->set_mag_filter(GL_LINEAR);
 
-        //m_decal_normal_textures.resize(4);
-        //      m_decal_normal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/opengl.png", false, true));
-        //      m_decal_normal_textures[0]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
-        //      m_decal_normal_textures[0]->set_mag_filter(GL_LINEAR);
-        //
-        //      m_decal_normal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/vulkan.png", false, true));
-        //      m_decal_normal_textures[1]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
-        //      m_decal_normal_textures[1]->set_mag_filter(GL_LINEAR);
-        //
-        //      m_decal_normal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/directx.png", false, true));
-        //      m_decal_normal_textures[2]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
-        //      m_decal_normal_textures[2]->set_mag_filter(GL_LINEAR);
-        //
-        //      m_decal_normal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/metal.png", false, true));
-        //      m_decal_normal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
-        //      m_decal_normal_textures[3]->set_mag_filter(GL_LINEAR);
+        m_decal_normal_textures.resize(4);
+        m_decal_normal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/copper-rock1-normal.png", false, true));
+        m_decal_normal_textures[0]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[0]->set_mag_filter(GL_LINEAR);
+        
+        m_decal_normal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/oakfloor_normal.png", false, true));
+        m_decal_normal_textures[1]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[1]->set_mag_filter(GL_LINEAR);
+        
+        m_decal_normal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/octostoneNormalc.png", false, true));
+        m_decal_normal_textures[2]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[2]->set_mag_filter(GL_LINEAR);
+        
+        m_decal_normal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/redbricks2b-normal.png", false, true));
+        m_decal_normal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[3]->set_mag_filter(GL_LINEAR);
 
         return true;
     }
@@ -886,7 +881,6 @@ private:
     std::unique_ptr<dw::Texture2D> m_depth_rt;
 
     std::unique_ptr<dw::Framebuffer> m_g_buffer_fbo;
-    std::unique_ptr<dw::Framebuffer> m_decal_fbo;
 
     std::vector<std::unique_ptr<dw::Texture2D>> m_decal_textures;
     std::vector<std::unique_ptr<dw::Texture2D>> m_decal_normal_textures;

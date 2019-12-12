@@ -2,7 +2,8 @@
 // OUTPUT VARIABLES  ------------------------------------------------
 // ------------------------------------------------------------------
 
-out vec3 FS_OUT_Color;
+layout(location = 0) out vec3 FS_OUT_Albedo;
+layout(location = 1) out vec3 FS_OUT_Normal;
 
 // ------------------------------------------------------------------
 // INPUT VARIABLES  ------------------------------------------------
@@ -23,9 +24,11 @@ layout(std140) uniform GlobalUniforms
 
 uniform sampler2D s_Depth;
 uniform sampler2D s_Decal;
+uniform sampler2D s_DecalNormal;
 
 uniform vec4 u_DecalOverlayColor;
 uniform mat4 u_DecalVP;
+uniform mat4 u_DecalModel;
 uniform vec2 u_AspectRatio;
 
 // ------------------------------------------------------------------
@@ -48,6 +51,24 @@ vec3 world_position_from_depth(vec2 screen_pos, float ndc_depth)
 
     return world_pos.xyz;
 }
+
+// ------------------------------------------------------------------
+
+vec3 get_normal_from_map(vec3 tangent, vec3 bitangent, vec3 normal, vec2 tex_coord, sampler2D normal_map)
+{
+    // Create TBN matrix.
+    mat3 TBN = mat3(normalize(tangent), normalize(bitangent), normalize(normal));
+
+    // Sample tangent space normal vector from normal map and remap it from [0, 1] to [-1, 1] range.
+    vec3 n = texture(normal_map, tex_coord).xyz;
+    n = normalize(n * 2.0 - 1.0);
+
+    // Multiple vector by the TBN matrix to transform the normal from tangent space to world space.
+    n = normalize(TBN * n);
+
+    return n;
+}
+
 
 // ------------------------------------------------------------------
 // MAIN -------------------------------------------------------------
@@ -77,7 +98,10 @@ void main()
     if (albedo.a < 0.1)
         discard;
 
-    FS_OUT_Color = albedo.rgb;
+    vec3 map_normal = texture(s_DecalNormal, decal_tex_coord).xyz;
+    
+    FS_OUT_Albedo = albedo.rgb;
+    FS_OUT_Normal = mat3(u_DecalModel) * map_normal;
 }
 
 // ------------------------------------------------------------------
