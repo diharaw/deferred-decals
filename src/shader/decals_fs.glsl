@@ -25,6 +25,9 @@ layout(std140) uniform GlobalUniforms
 uniform sampler2D s_Depth;
 uniform sampler2D s_Decal;
 uniform sampler2D s_DecalNormal;
+uniform sampler2D s_SourceNormal;
+uniform sampler2D s_Tangent;
+uniform sampler2D s_Bitangent;
 
 uniform vec4 u_DecalOverlayColor;
 uniform mat4 u_DecalVP;
@@ -61,14 +64,13 @@ vec3 get_normal_from_map(vec3 tangent, vec3 bitangent, vec3 normal, vec2 tex_coo
 
     // Sample tangent space normal vector from normal map and remap it from [0, 1] to [-1, 1] range.
     vec3 n = texture(normal_map, tex_coord).xyz;
-    n = normalize(n * 2.0 - 1.0);
+    n      = normalize(n * 2.0 - 1.0);
 
     // Multiple vector by the TBN matrix to transform the normal from tangent space to world space.
     n = normalize(TBN * n);
 
     return n;
 }
-
 
 // ------------------------------------------------------------------
 // MAIN -------------------------------------------------------------
@@ -98,10 +100,12 @@ void main()
     if (albedo.a < 0.1)
         discard;
 
-    vec3 map_normal = texture(s_DecalNormal, decal_tex_coord).xyz;
-    
+    vec3 N = texture(s_SourceNormal, tex_coords).xyz;
+    vec3 T = texture(s_Tangent, tex_coords).xyz;
+    vec3 B = texture(s_Bitangent, tex_coords).xyz;
+
     FS_OUT_Albedo = albedo.rgb;
-    FS_OUT_Normal = mat3(u_DecalModel) * map_normal;
+    FS_OUT_Normal = get_normal_from_map(T, B, N, decal_tex_coord, s_DecalNormal);
 }
 
 // ------------------------------------------------------------------

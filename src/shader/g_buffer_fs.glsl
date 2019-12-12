@@ -4,6 +4,9 @@
 
 layout(location = 0) out vec3 FS_OUT_Albedo;
 layout(location = 1) out vec3 FS_OUT_Normal;
+layout(location = 2) out vec3 FS_OUT_SrcNormal;
+layout(location = 3) out vec3 FS_OUT_Tangent;
+layout(location = 4) out vec3 FS_OUT_Bitangent;
 
 // ------------------------------------------------------------------
 // INPUT VARIABLES  -------------------------------------------------
@@ -51,8 +54,11 @@ void main()
     vec3 T = normalize(FS_IN_Tangent);
     vec3 B = normalize(FS_IN_Bitangent);
 
-    FS_OUT_Albedo = diffuse.xyz;
-    FS_OUT_Normal = get_normal_from_map(T, B, N, FS_IN_TexCoord, s_Normal);
+    FS_OUT_Albedo    = diffuse.xyz;
+    FS_OUT_Normal    = get_normal_from_map(T, B, N, FS_IN_TexCoord, s_Normal);
+    FS_OUT_SrcNormal = N;
+    FS_OUT_Tangent   = T;
+    FS_OUT_Bitangent = B;
 }
 
 // ------------------------------------------------------------------

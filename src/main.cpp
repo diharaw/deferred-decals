@@ -334,7 +334,7 @@ private:
         glDepthMask(GL_FALSE);
         glDisable(GL_CULL_FACE);
 
-        m_g_buffer_fbo->bind();
+        m_decal_fbo->bind();
 
         glViewport(0, 0, m_width, m_height);
 
@@ -361,6 +361,15 @@ private:
 
             if (m_decals_program->set_uniform("s_Depth", 2))
                 m_depth_rt->bind(2);
+
+            if (m_decals_program->set_uniform("s_SourceNormal", 3))
+                m_g_buffer_2_rt->bind(3);
+
+            if (m_decals_program->set_uniform("s_Tangent", 4))
+                m_g_buffer_3_rt->bind(4);
+
+            if (m_decals_program->set_uniform("s_Bitangent", 5))
+                m_g_buffer_4_rt->bind(5);
 
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
         }
@@ -576,10 +585,16 @@ private:
     {
         m_g_buffer_0_rt = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE);
         m_g_buffer_1_rt = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB32F, GL_RGB, GL_FLOAT);
+        m_g_buffer_2_rt = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB32F, GL_RGB, GL_FLOAT);
+        m_g_buffer_3_rt = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB32F, GL_RGB, GL_FLOAT);
+        m_g_buffer_4_rt = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_RGB32F, GL_RGB, GL_FLOAT);
         m_depth_rt      = std::make_unique<dw::Texture2D>(m_width, m_height, 1, 1, 1, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT);
 
         m_g_buffer_0_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
         m_g_buffer_1_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+        m_g_buffer_2_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+        m_g_buffer_3_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
+        m_g_buffer_4_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
         m_depth_rt->set_wrapping(GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE);
     }
 
@@ -589,9 +604,15 @@ private:
     {
         m_g_buffer_fbo = std::make_unique<dw::Framebuffer>();
 
-        dw::Texture* gbuffer_rts[] = { m_g_buffer_0_rt.get(), m_g_buffer_1_rt.get() };
-        m_g_buffer_fbo->attach_multiple_render_targets(2, gbuffer_rts);
+        dw::Texture* gbuffer_rts[] = { m_g_buffer_0_rt.get(), m_g_buffer_1_rt.get(), m_g_buffer_2_rt.get(), m_g_buffer_3_rt.get(), m_g_buffer_4_rt.get() };
+        m_g_buffer_fbo->attach_multiple_render_targets(5, gbuffer_rts);
         m_g_buffer_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
+
+        m_decal_fbo = std::make_unique<dw::Framebuffer>();
+
+        dw::Texture* decal_rts[] = { m_g_buffer_0_rt.get(), m_g_buffer_1_rt.get() };
+        m_decal_fbo->attach_multiple_render_targets(2, decal_rts);
+        m_decal_fbo->attach_depth_stencil_target(m_depth_rt.get(), 0, 0);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -665,15 +686,15 @@ private:
         m_decal_normal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/copper-rock1-normal.png", false, true));
         m_decal_normal_textures[0]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[0]->set_mag_filter(GL_LINEAR);
-        
+
         m_decal_normal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/oakfloor_normal.png", false, true));
         m_decal_normal_textures[1]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[1]->set_mag_filter(GL_LINEAR);
-        
+
         m_decal_normal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/octostoneNormalc.png", false, true));
         m_decal_normal_textures[2]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[2]->set_mag_filter(GL_LINEAR);
-        
+
         m_decal_normal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/redbricks2b-normal.png", false, true));
         m_decal_normal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[3]->set_mag_filter(GL_LINEAR);
@@ -876,11 +897,15 @@ private:
     std::unique_ptr<dw::Program> m_decals_program;
     std::unique_ptr<dw::Program> m_deferred_shading_program;
 
-    std::unique_ptr<dw::Texture2D> m_g_buffer_0_rt;
-    std::unique_ptr<dw::Texture2D> m_g_buffer_1_rt;
+    std::unique_ptr<dw::Texture2D> m_g_buffer_0_rt; // Albedo
+    std::unique_ptr<dw::Texture2D> m_g_buffer_1_rt; // Normal
+    std::unique_ptr<dw::Texture2D> m_g_buffer_2_rt; // Source Normal
+    std::unique_ptr<dw::Texture2D> m_g_buffer_3_rt; // Tangent
+    std::unique_ptr<dw::Texture2D> m_g_buffer_4_rt; // Bitangent
     std::unique_ptr<dw::Texture2D> m_depth_rt;
 
     std::unique_ptr<dw::Framebuffer> m_g_buffer_fbo;
+    std::unique_ptr<dw::Framebuffer> m_decal_fbo;
 
     std::vector<std::unique_ptr<dw::Texture2D>> m_decal_textures;
     std::vector<std::unique_ptr<dw::Texture2D>> m_decal_normal_textures;
