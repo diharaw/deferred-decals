@@ -111,15 +111,15 @@ protected:
         {
             if (m_is_hit)
                 m_debug_draw.frustum(m_projector_view_proj, glm::vec3(1.0f, 0.0f, 0.0f));
-
-            if (m_visualize_projectors)
-            {
-                for (int i = 0; i < m_decal_instances.size(); i++)
-                    m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
-            }
-
-            m_debug_draw.render(nullptr, m_width, m_height, m_global_uniforms.view_proj);
         }
+
+		if (m_visualize_projectors)
+        {
+            for (int i = 0; i < m_decal_instances.size(); i++)
+                m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
+        }
+
+        m_debug_draw.render(nullptr, m_width, m_height, m_global_uniforms.view_proj);
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -636,14 +636,11 @@ private:
         ImGui::Checkbox("Visualize Projectors", &m_visualize_projectors);
         ImGui::ColorEdit4("Decal Overlay Color", &m_decal_overlay_color.x);
 
-        const char* listbox_items[] = { "OpenGL", "Vulkan", "DirectX", "Metal" };
-        ImGui::ListBox("Selected Decal", &m_selected_decal, listbox_items, IM_ARRAYSIZE(listbox_items), 4);
+        const char* listbox_items[] = { "Decal 0", "Decal 1", "Decal 2", "Decal 3", "Decal 4", "Decal 5", "Decal 6", "Decal 7" };
+        ImGui::ListBox("Selected Decal", &m_selected_decal, listbox_items, IM_ARRAYSIZE(listbox_items), 8);
 
-        if (!GLAD_GL_NV_conservative_raster && !GLAD_GL_INTEL_conservative_rasterization)
-        {
-            ImGui::Separator();
-            ImGui::Text("Note: Conservative Rasterization not supported on this GPU.");
-        }
+		if (ImGui::Button("Clear Decals"))
+			m_decal_instances.clear();
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -665,39 +662,71 @@ private:
 
     bool load_decals()
     {
-        m_decal_textures.resize(4);
-        m_decal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/opengl.png", false, true));
+        m_decal_textures.resize(8);
+        m_decal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_00_Albedo.tga", false, true));
         m_decal_textures[0]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[0]->set_mag_filter(GL_LINEAR);
 
-        m_decal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/vulkan.png", false, true));
+        m_decal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_01_Albedo.tga", false, true));
         m_decal_textures[1]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[1]->set_mag_filter(GL_LINEAR);
 
-        m_decal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/directx.png", false, true));
+        m_decal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_02_Albedo.tga", false, true));
         m_decal_textures[2]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[2]->set_mag_filter(GL_LINEAR);
 
-        m_decal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/metal.png", false, true));
+        m_decal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_03_Albedo.tga", false, true));
         m_decal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_textures[3]->set_mag_filter(GL_LINEAR);
 
-        m_decal_normal_textures.resize(4);
-        m_decal_normal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/copper-rock1-normal.png", false, true));
+        m_decal_textures[4] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_04_Albedo.tga", false, true));
+        m_decal_textures[4]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_textures[4]->set_mag_filter(GL_LINEAR);
+
+        m_decal_textures[5] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_05_Albedo.tga", false, true));
+        m_decal_textures[5]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_textures[5]->set_mag_filter(GL_LINEAR);
+
+        m_decal_textures[6] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_06_Albedo.tga", false, true));
+        m_decal_textures[6]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_textures[6]->set_mag_filter(GL_LINEAR);
+
+        m_decal_textures[7] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_07_Albedo.tga", false, true));
+        m_decal_textures[7]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_textures[7]->set_mag_filter(GL_LINEAR);
+
+        m_decal_normal_textures.resize(8);
+        m_decal_normal_textures[0] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_00_Normal.png", false, false));
         m_decal_normal_textures[0]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[0]->set_mag_filter(GL_LINEAR);
 
-        m_decal_normal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/oakfloor_normal.png", false, true));
+        m_decal_normal_textures[1] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_01_Normal.png", false, false));
         m_decal_normal_textures[1]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[1]->set_mag_filter(GL_LINEAR);
 
-        m_decal_normal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/octostoneNormalc.png", false, true));
+        m_decal_normal_textures[2] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_02_Normal.png", false, false));
         m_decal_normal_textures[2]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[2]->set_mag_filter(GL_LINEAR);
 
-        m_decal_normal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/redbricks2b-normal.png", false, true));
+        m_decal_normal_textures[3] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_03_Normal.png", false, false));
         m_decal_normal_textures[3]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
         m_decal_normal_textures[3]->set_mag_filter(GL_LINEAR);
+
+        m_decal_normal_textures[4] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_04_Normal.png", false, false));
+        m_decal_normal_textures[4]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[4]->set_mag_filter(GL_LINEAR);
+
+        m_decal_normal_textures[5] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_05_Normal.png", false, false));
+        m_decal_normal_textures[5]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[5]->set_mag_filter(GL_LINEAR);
+
+        m_decal_normal_textures[6] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_06_Normal.png", false, false));
+        m_decal_normal_textures[6]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[6]->set_mag_filter(GL_LINEAR);
+
+        m_decal_normal_textures[7] = std::unique_ptr<dw::Texture2D>(dw::Texture2D::create_from_files("texture/Decal_07_Normal.png", false, false));
+        m_decal_normal_textures[7]->set_min_filter(GL_LINEAR_MIPMAP_LINEAR);
+        m_decal_normal_textures[7]->set_mag_filter(GL_LINEAR);
 
         return true;
     }
