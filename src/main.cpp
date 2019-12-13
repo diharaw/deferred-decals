@@ -113,7 +113,7 @@ protected:
                 m_debug_draw.frustum(m_projector_view_proj, glm::vec3(1.0f, 0.0f, 0.0f));
         }
 
-		if (m_visualize_projectors)
+        if (m_visualize_projectors)
         {
             for (int i = 0; i < m_decal_instances.size(); i++)
                 m_debug_draw.frustum(m_decal_instances[i].m_projector_view_proj, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -639,8 +639,8 @@ private:
         const char* listbox_items[] = { "Decal 0", "Decal 1", "Decal 2", "Decal 3", "Decal 4", "Decal 5", "Decal 6", "Decal 7" };
         ImGui::ListBox("Selected Decal", &m_selected_decal, listbox_items, IM_ARRAYSIZE(listbox_items), 8);
 
-		if (ImGui::Button("Clear Decals"))
-			m_decal_instances.clear();
+        if (ImGui::Button("Clear Decals"))
+            m_decal_instances.clear();
     }
 
     // -----------------------------------------------------------------------------------------------------------------------------------
